@@ -287,7 +287,7 @@ dependencies = [
 
 [[package]]
 name = "ccbox"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "anyhow",
  "dirs 5.0.1",
