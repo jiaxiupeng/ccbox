@@ -52,6 +52,29 @@ jobs:
             exit 1
           }
 
+      - name: Extract changelog for this release
+        # Pull the section for the current tag (e.g. "## [1.0.1]") out of
+        # CHANGELOG.md so the GitHub Release body stays in sync with the file.
+        # Uses the GITHUB_ENV EOF delimiter for safe multi-line value injection.
+        id: changelog
+        shell: bash
+        run: |
+          ver="${{ github.ref_name }}"
+          ver="${ver#v}"
+          body=$(awk -v ver="$ver" '
+            $0 ~ "^## \\[" ver "\\]" {flag=1; print; next}
+            /^## \[/ && flag {flag=0}
+            flag {print}
+          ' CHANGELOG.md)
+          if [ -z "$body" ]; then
+            body="见 [CHANGELOG.md](CHANGELOG.md) 获取完整变更记录。"
+          fi
+          {
+            echo "body<<CHANGELOG_EOF"
+            echo "$body"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_ENV"
+
       - name: Build & publish with tauri-action
         uses: tauri-apps/tauri-action@v0
         env:
@@ -64,7 +87,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "CCBox ${{ github.ref_name }}"
-          releaseBody: "See the assets below to download and install. The app will auto-update from previous versions."
+          releaseBody: ${{ env.body }}
           releaseDraft: true
           prerelease: false
           # tauri-action auto-generates and uploads the latest.json manifest
