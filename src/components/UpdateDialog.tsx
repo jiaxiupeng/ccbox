@@ -129,7 +129,7 @@ export function UpdateDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => !downloading && onOpenChange(o)}
+      onOpenChange={onOpenChange}
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -195,10 +195,16 @@ export function UpdateDialog({
           <Button
             variant="outline"
             size="sm"
-            disabled={downloading}
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              if (downloading) {
+                // Confirm before cancelling an in-progress download — closing
+                // the dialog aborts it and the user must restart next time.
+                if (!window.confirm("关闭将取消正在进行的下载，确定吗？")) return;
+              }
+              onOpenChange(false);
+            }}
           >
-            稍后
+            {downloading ? "取消下载" : "稍后"}
           </Button>
           <Button size="sm" disabled={downloading} onClick={handleUpdate}>
             {downloading ? (
