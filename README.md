@@ -164,4 +164,8 @@ CCBox 扫描 `~/.claude/projects/` 下的 Claude Code 会话日志（`.jsonl`）
   <img src="https://api.star-history.com/svg?repos=jiaxiupeng/ccbox&type=Date" alt="Star History Chart" width="600" />
 </a>
 
+<p>
+<sub>📈 图表由 <a href="https://www.star-history.com">star-history.com</a> 提供。若上方图片未显示，<a href="https://www.star-history.com/#jiaxiupeng/ccbox&Date">点此直达</a> 查看。</sub>
+</p>
+
 </div>
