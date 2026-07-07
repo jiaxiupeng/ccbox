@@ -1,0 +1,72 @@
+name: Release
+
+# Triggered when a version tag (v*) is pushed. Builds the Windows installer,
+# signs it with the updater private key, and publishes a GitHub Release with
+# the latest.json manifest that the in-app updater polls.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# Explicit permissions: new repos default to read-only, which blocks
+# tauri-action from creating a Release. Grant write on contents (to create
+# the release/tag) and pull-requests (in case the action opens a PR).
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Verify signing secret is present
+        # Diagnostic: fail early with a clear message if the secret is missing,
+        # instead of failing deep inside the build with a cryptic error.
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          $keyLen = "$env:KEY".Length
+          echo "TAURI_SIGNING_PRIVATE_KEY present: $($keyLen -gt 0) (length: $keyLen)"
+          if ($keyLen -eq 0) {
+            echo "::error::Signing secret missing! Go to Settings > Secrets and variables > Actions and add TAURI_SIGNING_PRIVATE_KEY."
+            exit 1
+          }
+
+      - name: Build & publish with tauri-action
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signing key injected from repo secret. The matching public key is
+          # baked into tauri.conf.json (plugins.updater.pubkey). Key has no
+          # password, so TAURI_SIGNING_PRIVATE_KEY_PASSWORD is intentionally
+          # omitted — fewer moving parts, nothing to mismatch.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "CCBox ${{ github.ref_name }}"
+          releaseBody: "See the assets below to download and install. The app will auto-update from previous versions."
+          releaseDraft: true
+          prerelease: false
+          # tauri-action auto-generates and uploads the latest.json manifest
+          # alongside the .exe / .msi / .sig artifacts.
+          updaterJsonPreferNsis: true
