@@ -87,6 +87,11 @@ pub struct AppSettings {
     /// so the user's arrangement survives provider switches.
     #[serde(default)]
     pub status_bar: StatusBarConfig,
+    /// Claude Code permission mode (default / acceptEdits / plan / auto /
+    /// dontAsk / bypassPermissions), written to permissions.defaultMode in
+    /// ~/.claude/settings.json. Stored here so it survives provider switches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permission_mode: Option<String>,
 }
 fn default_theme() -> String {
     "system".to_string()

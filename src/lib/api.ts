@@ -36,6 +36,11 @@ export const api = {
     invoke<void>("set_settings", { settings }),
   defaultPricing: () => invoke<Record<string, ModelPricing>>("default_pricing"),
   getClaudeSettingsPreview: () => invoke<string>("get_claude_settings_preview"),
+  /** Current Claude Code permission mode (from CCBox prefs or settings.json). */
+  getPermissionMode: () => invoke<string | null>("get_permission_mode"),
+  /** Write permissions.defaultMode to ~/.claude/settings.json + persist in prefs. */
+  setPermissionMode: (mode: string) =>
+    invoke<void>("set_permission_mode", { mode }),
   /** Install the Node statusLine script + register the statusLine key.
    *  GLM-only; errors with a friendly message otherwise. Returns the active
    *  provider name on success. */

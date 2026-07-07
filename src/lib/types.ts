@@ -36,7 +36,18 @@ export interface AppSettings {
   theme: string;
   pricing: Record<string, ModelPricing>;
   statusBar: StatusBarConfig;
+  /** Claude Code permission mode stored in CCBox prefs (survives provider switches). */
+  permissionMode?: string;
 }
+
+/** Claude Code permission modes (permissions.defaultMode in settings.json). */
+export type PermissionMode =
+  | "default"
+  | "acceptEdits"
+  | "plan"
+  | "auto"
+  | "dontAsk"
+  | "bypassPermissions";
 
 /** One configurable status-bar module.
  *  `type` identifies the data source; the rest control rendering. */

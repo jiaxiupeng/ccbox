@@ -407,3 +407,30 @@ fn test_connectivity(base_url: &str) -> TestResult {
         },
     }
 }
+
+/// Get the current Claude Code permission mode. Prefers the value stored in
+/// CCBox's own settings (so it survives provider switches); falls back to the
+/// value actually present in ~/.claude/settings.json. Returns null if neither
+/// has a value.
+#[tauri::command]
+pub fn get_permission_mode(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    let settings = state.load_settings();
+    if let Some(mode) = settings.permission_mode {
+        return Ok(Some(mode));
+    }
+    claude_config_writer::read_permission_mode().map_err(|e| e.to_string())
+}
+
+/// Set the Claude Code permission mode: writes it to permissions.defaultMode
+/// in ~/.claude/settings.json (safe-merge, preserves allow/deny/ask lists)
+/// and persists the choice in CCBox's settings so it survives provider switches.
+#[tauri::command]
+pub fn set_permission_mode(
+    mode: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    claude_config_writer::write_permission_mode(&mode).map_err(|e| e.to_string())?;
+    let mut settings = state.load_settings();
+    settings.permission_mode = Some(mode);
+    state.save_settings(&settings).map_err(|e| e.to_string())
+}

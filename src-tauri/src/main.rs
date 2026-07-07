@@ -143,6 +143,8 @@ fn main() {
             commands::get_provider_quota,
             commands::default_pricing,
             commands::get_claude_settings_preview,
+            commands::get_permission_mode,
+            commands::set_permission_mode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running CCBox");

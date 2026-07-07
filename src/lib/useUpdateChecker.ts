@@ -37,19 +37,25 @@ export function useUpdateChecker() {
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   // Throttle silent checks so a quick app restart doesn't re-query GitHub.
+  // Track whether the last check actually succeeded: if it failed (network /
+  // 404 / etc.), the next check must hit the network again regardless of time.
   const lastCheckRef = useRef(0);
+  const lastCheckOkRef = useRef(false);
   const updateRef = useRef<Update | null>(null);
 
   const checkForUpdates = useCallback(
     async ({ silent }: Silent): Promise<CheckResult> => {
-      // Throttle: silent checks run at most once per hour.
-      if (silent && Date.now() - lastCheckRef.current < ONE_HOUR) {
+      // Throttle: silent checks run at most once per hour — but only if the
+      // previous check was successful. A failed startup check must not poison
+      // a subsequent manual check with a stale "upToDate" result.
+      if (silent && lastCheckOkRef.current && Date.now() - lastCheckRef.current < ONE_HOUR) {
         return { status: "upToDate" };
       }
       setChecking(true);
       try {
         const upd = await check();
         lastCheckRef.current = Date.now();
+        lastCheckOkRef.current = true;
         if (upd) {
           updateRef.current = upd;
           const info: UpdateInfo = {
@@ -67,9 +73,10 @@ export function useUpdateChecker() {
         setUpdateInfo(null);
         return { status: "upToDate" };
       } catch (e) {
+        lastCheckOkRef.current = false;
         const message = String(e);
-        if (!silent) return { status: "error", message };
-        // Silent failures are swallowed — never bother the user on startup.
+        // Both silent and manual failures return the error; the caller decides
+        // whether to toast (App.tsx toasts on manual, swallows on silent).
         return { status: "error", message };
       } finally {
         setChecking(false);

@@ -208,6 +208,44 @@ pub fn clear_statusline_config() -> Result<()> {
     Ok(())
 }
 
+/// Write `permissions.defaultMode` into `~/.claude/settings.json`. Safe-merge:
+/// only touches the `defaultMode` key inside the `permissions` object, so any
+/// user-configured `allow` / `deny` / `ask` lists are preserved. Provider
+/// switches never call this, so the chosen mode survives switching providers.
+pub fn write_permission_mode(mode: &str) -> Result<()> {
+    let settings_path = claude_settings_path()?;
+    let mut root: Value = storage::read_json_or_default(&settings_path);
+    if !root.is_object() {
+        root = Value::Object(Map::new());
+    }
+    if let Some(obj) = root.as_object_mut() {
+        let perms = obj
+            .entry("permissions".to_string())
+            .or_insert_with(|| Value::Object(Map::new()));
+        if let Some(p) = perms.as_object_mut() {
+            p.insert("defaultMode".to_string(), json!(mode));
+        }
+        storage::backup_if_exists(&settings_path)?;
+        storage::write_json_atomic(&settings_path, &root)?;
+    }
+    Ok(())
+}
+
+/// Read the current `permissions.defaultMode` value from
+/// `~/.claude/settings.json`, if any. Used to initialize the UI selector.
+pub fn read_permission_mode() -> Result<Option<String>> {
+    let settings_path = claude_settings_path()?;
+    if !settings_path.exists() {
+        return Ok(None);
+    }
+    let root: Value = storage::read_json_or_default(&settings_path);
+    Ok(root
+        .get("permissions")
+        .and_then(|p| p.get("defaultMode"))
+        .and_then(|m| m.as_str())
+        .map(|s| s.to_string()))
+}
+
 const STATUSLINE_SCRIPT: &str = r##"#!/usr/bin/env node
 /* CCBox statusline — self-contained CommonJS, no external deps.
  * Claude Code pipes session JSON on stdin each update. We read the user's
