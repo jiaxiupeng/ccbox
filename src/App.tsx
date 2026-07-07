@@ -44,6 +44,7 @@ export default function App() {
     checking: updateChecking,
     downloading,
     progress,
+    downloadStats,
     checkForUpdates,
     downloadAndInstall,
   } = useUpdateChecker();
@@ -177,6 +178,7 @@ export default function App() {
         updateInfo={updateInfo}
         downloading={downloading}
         progress={progress}
+        downloadStats={downloadStats}
         onDownloadAndInstall={downloadAndInstall}
       />
 

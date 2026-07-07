@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Download, RefreshCw, CheckCircle2, ExternalLink } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,17 +16,103 @@ interface UpdateDialogProps {
   updateInfo: UpdateInfo | null;
   downloading: boolean;
   progress: number;
+  /** Human-readable download stats from the hook, e.g. "1.2 / 3.4 MB · 580 KB/s". */
+  downloadStats?: string;
   onDownloadAndInstall: () => Promise<void>;
 }
 
+/** Minimal markdown renderer for changelog text. Handles just the subset our
+ *  CHANGELOG.md uses: headings (## ###), list items (-), bold (**), and inline
+ *  code (`). Avoids pulling in a full markdown lib for ~10 lines of content. */
+function renderMarkdown(md: string) {
+  const lines = md.split(/\r?\n/);
+  const out: React.ReactNode[] = [];
+  let listItems: string[] = [];
+
+  const flushList = (key: number) => {
+    if (listItems.length === 0) return;
+    out.push(
+      <ul key={`ul-${key}`} className="grid gap-1">
+        {listItems.map((li, i) => (
+          <li key={i} className="flex gap-1.5">
+            <span className="text-muted-foreground">·</span>
+            <span>{renderInline(li)}</span>
+          </li>
+        ))}
+      </ul>,
+    );
+    listItems = [];
+  };
+
+  const renderInline = (text: string): React.ReactNode => {
+    // Split on **bold** and `code`, preserving the delimiters.
+    const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+    return parts.map((p, i) => {
+      if (p.startsWith("**") && p.endsWith("**")) {
+        return (
+          <strong key={i} className="font-semibold text-foreground">
+            {p.slice(2, -2)}
+          </strong>
+        );
+      }
+      if (p.startsWith("`") && p.endsWith("`")) {
+        return (
+          <code
+            key={i}
+            className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]"
+          >
+            {p.slice(1, -1)}
+          </code>
+        );
+      }
+      return <span key={i}>{p}</span>;
+    });
+  };
+
+  lines.forEach((line, i) => {
+    const h3 = line.match(/^###\s+(.*)/);
+    const h2 = line.match(/^##\s+(.*)/);
+    const li = line.match(/^[-*]\s+(.*)/);
+    if (h3) {
+      flushList(i);
+      out.push(
+        <p key={i} className="text-xs font-semibold text-foreground">
+          {renderInline(h3[1])}
+        </p>,
+      );
+    } else if (h2) {
+      flushList(i);
+      out.push(
+        <p key={i} className="text-sm font-bold text-foreground">
+          {renderInline(h2[1])}
+        </p>,
+      );
+    } else if (li) {
+      listItems.push(li[1]);
+    } else if (line.trim() === "") {
+      flushList(i);
+    } else {
+      flushList(i);
+      out.push(
+        <p key={i} className="text-xs">
+          {renderInline(line)}
+        </p>,
+      );
+    }
+  });
+  flushList(lines.length);
+  return out;
+}
+
 /** Modal showing a new version's changelog with a one-click download+install.
- *  During download it shows a progress bar and disables dismissal. */
+ *  During download it shows a progress bar + speed and disables dismissal. */
 export function UpdateDialog({
   open,
   onOpenChange,
   updateInfo,
   downloading,
   progress,
+  downloadStats,
   onDownloadAndInstall,
 }: UpdateDialogProps) {
   const [err, setErr] = useState<string | null>(null);
@@ -58,9 +144,9 @@ export function UpdateDialog({
 
         {updateInfo?.body && (
           <div className="max-h-44 overflow-auto rounded-lg bg-muted/50 p-3">
-            <pre className="whitespace-pre-wrap break-words font-sans text-xs leading-relaxed text-muted-foreground">
-              {updateInfo.body}
-            </pre>
+            <div className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground">
+              {renderMarkdown(updateInfo.body)}
+            </div>
           </div>
         )}
 
@@ -76,6 +162,23 @@ export function UpdateDialog({
                 style={{ width: `${progress}%` }}
               />
             </div>
+            {downloadStats && (
+              <p className="text-center text-[11px] text-muted-foreground/70">
+                {downloadStats}
+              </p>
+            )}
+            <p className="text-center text-[11px] text-muted-foreground/60">
+              下载较慢？GitHub 服务器在海外，请耐心等待或
+              <a
+                href="https://github.com/jiaxiupeng/ccbox/releases/latest"
+                target="_blank"
+                rel="noreferrer"
+                className="ml-1 inline-flex items-center gap-0.5 text-primary hover:underline"
+              >
+                从浏览器下载
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </p>
           </div>
         )}
 
@@ -86,9 +189,7 @@ export function UpdateDialog({
           </div>
         )}
 
-        {err && (
-          <p className="text-xs text-destructive">更新失败：{err}</p>
-        )}
+        {err && <p className="text-xs text-destructive">更新失败：{err}</p>}
 
         <div className="flex justify-end gap-2 pt-1">
           <Button

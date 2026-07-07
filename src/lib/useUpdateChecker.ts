@@ -36,6 +36,8 @@ export function useUpdateChecker() {
   const [checking, setChecking] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
+  /** Human-readable download stats: "1.2 / 3.4 MB · 580 KB/s" */
+  const [downloadStats, setDownloadStats] = useState<string>("");
   // Throttle silent checks so a quick app restart doesn't re-query GitHub.
   // Track whether the last check actually succeeded: if it failed (network /
   // 404 / etc.), the next check must hit the network again regardless of time.
@@ -90,23 +92,34 @@ export function useUpdateChecker() {
     if (!upd) throw new Error("没有可用的更新");
     setDownloading(true);
     setProgress(0);
+    setDownloadStats("");
     try {
-      // onEvent fires with chunk length + content length for progress reporting.
+      // Track bytes + time so we can show "1.2 / 3.4 MB · 580 KB/s".
       let total = 0;
       let downloaded = 0;
+      let startTime = 0;
+      const fmtMB = (b: number) => (b / 1024 / 1024).toFixed(1);
+      const fmtKBps = (b: number, ms: number) =>
+        ms > 0 ? `${Math.round(b / 1024 / (ms / 1000))} KB/s` : "";
       await upd.downloadAndInstall((event) => {
         switch (event.event) {
           case "Started":
             total = event.data.contentLength ?? 0;
+            startTime = Date.now();
             break;
           case "Progress":
             downloaded += event.data.chunkLength;
             if (total > 0) {
               setProgress(Math.min(100, Math.round((downloaded / total) * 100)));
+              const elapsed = Date.now() - startTime;
+              setDownloadStats(
+                `${fmtMB(downloaded)} / ${fmtMB(total)} MB · ${fmtKBps(downloaded, elapsed)}`,
+              );
             }
             break;
           case "Finished":
             setProgress(100);
+            setDownloadStats("");
             break;
         }
       });
@@ -123,6 +136,7 @@ export function useUpdateChecker() {
     checking,
     downloading,
     progress,
+    downloadStats,
     checkForUpdates,
     downloadAndInstall,
   };
