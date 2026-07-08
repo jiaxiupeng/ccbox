@@ -4,7 +4,7 @@
 
 **一个轻量的 Claude Code API 供应商切换工具 + 使用量查看器**
 
-一键切换 Claude Code 的 API 配置（官方 / 智谱 GLM / 通义 Qwen / Kimi / DeepSeek / 自定义），并可视化统计 Token 用量与费用。基于 Tauri 2，安装包仅 ~2MB，内存占用 ~25MB。
+一键切换 Claude Code 的 API 配置（官方 / 智谱 GLM / 通义 Qwen / Kimi / DeepSeek / 自定义），并可视化统计 Token 用量与费用。基于 Tauri 2，安装包仅 ~2 MB，运行内存 ~25 MB。
 
 [![版本](https://img.shields.io/github/v/release/jiaxiupeng/ccbox?label=)](https://github.com/jiaxiupeng/ccbox/releases)
 [![许可证](https://img.shields.io/github/license/jiaxiupeng/ccbox?label=)](LICENSE)
@@ -16,6 +16,12 @@
 
 ---
 
+## 📑 目录
+
+[📥 下载](#-下载) · [✨ 功能](#-功能) · [🛠 技术栈](#-技术栈) · [🔧 从源码构建](#-从源码构建) · [📁 项目结构](#-项目结构) · [🔒 安全与隐私](#-安全与隐私) · [📊 Token 统计说明](#-token-统计说明) · [📝 许可证](#-许可证)
+
+---
+
 ## 📥 下载
 
 > 推荐下载 **Setup 安装包**，支持后续自动更新；免安装版需手动下载新版。
@@ -24,8 +30,8 @@
 
 | 类型 | 文件 | 体积 | 说明 |
 |:---:|------|:---:|------|
-| 🟦 **NSIS**（推荐） | `CCBox_1.0.1_x64-setup.exe` | ~1.8 MB | 双击安装，支持自动更新 |
-| 🟩 MSI | `CCBox_1.0.1_x64_en-US.msi` | ~2.3 MB | 企业部署友好 |
+| 🟦 **NSIS**（推荐） | `CCBox_x.x.x_x64-setup.exe` | ~1.8 MB | 双击安装，支持自动更新 |
+| 🟩 MSI | `CCBox_x.x.x_x64_en-US.msi` | ~2.3 MB | 企业部署友好 |
 | ⬜ 免安装版 | `ccbox.exe` | ~4.3 MB | 双击即用，不写注册表 |
 
 **👉 [前往 Releases 页面下载](https://github.com/jiaxiupeng/ccbox/releases/latest)**

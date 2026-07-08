@@ -1,6 +1,6 @@
 [package]
 name = "ccbox"
-version = "1.0.2"
+version = "1.0.3"
 description = "Claude Code API switcher & usage viewer"
 authors = ["CCBox"]
 edition = "2021"

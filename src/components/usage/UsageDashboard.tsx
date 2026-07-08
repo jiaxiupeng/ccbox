@@ -4,7 +4,15 @@ import { api } from "@/lib/api";
 import type { DayUsage, UsageReport } from "@/lib/types";
 import { Heatmap } from "./Heatmap";
 import { BarChart } from "./BarChart";
-import { formatCNY, formatTokens, cn } from "@/lib/utils";
+import {
+  formatCNY,
+  formatTokens,
+  cn,
+  utc8Ymd,
+  utc8YearMonth,
+  utc8DaysAgo,
+  isWithinLastDaysUtc8,
+} from "@/lib/utils";
 
 /** One tab in the top switcher. "day" shows the most-recent day hourly;
  *  week/month show daily; all shows the full daily history. */
@@ -16,23 +24,27 @@ interface ChartPoint {
   cost: number;
 }
 
-/** Daily points filtered to the current calendar month (all days in-month). */
+/** Daily points filtered to the current calendar month (all days in-month),
+ *  measured in Beijing time (UTC+8) to match the backend's date keys. */
 function currentMonthDays(data: DayUsage[]): DayUsage[] {
-  const now = new Date();
-  const prefix = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  const prefix = utc8YearMonth();
   const inMonth = data.filter((d) => d.date.startsWith(prefix));
   // span from the 1st of this month through today, inclusive
   const start = `${prefix}-01`;
-  const end = new Date().toISOString().slice(0, 10);
+  const end = utc8Ymd();
   return fillDays(inMonth, start, end);
 }
 
-/** Fill in any missing calendar days between start and end with zeroed buckets. */
+/** Fill in any missing calendar days between start and end with zeroed buckets.
+ *  `start`/`end` are "YYYY-MM-DD" Beijing dates; iteration is pure day
+ *  arithmetic (no timezone drift, +8 has no DST). */
 function fillDays(data: DayUsage[], start: string, end: string): DayUsage[] {
   const map = new Map(data.map((d) => [d.date, d]));
   const out: DayUsage[] = [];
-  const cur = new Date(start + "T00:00:00Z");
-  const stop = new Date(end + "T00:00:00Z");
+  const [sy, sm, sd] = start.split("-").map(Number);
+  let cur = new Date(Date.UTC(sy, sm - 1, sd));
+  const [ey, em, ed] = end.split("-").map(Number);
+  const stop = new Date(Date.UTC(ey, em - 1, ed));
   for (; cur <= stop; cur.setUTCDate(cur.getUTCDate() + 1)) {
     const iso = cur.toISOString().slice(0, 10);
     out.push(map.get(iso) ?? { date: iso, tokens: 0, cost: 0 });
@@ -54,8 +66,8 @@ function buildPoints(report: UsageReport, p: Period): ChartPoint[] {
   if (p === "month") {
     daily = currentMonthDays(report.byDay);
   } else if (p === "week") {
-    const end = new Date().toISOString().slice(0, 10);
-    const start = new Date(Date.now() - 6 * 86400_000).toISOString().slice(0, 10);
+    const end = utc8Ymd();
+    const start = utc8DaysAgo(6);
     daily = fillDays(
       report.byDay.filter((d) => d.date >= start && d.date <= end),
       start,
@@ -180,12 +192,10 @@ export function UsageDashboard() {
       const d = report.hourDate ?? "";
       inRange = (date) => (d ? date === d : true);
     } else if (period === "week") {
-      const start = new Date(Date.now() - 6 * 86400_000).toISOString().slice(0, 10);
-      inRange = (date) => date >= start;
+      inRange = (date) => isWithinLastDaysUtc8(date, 7);
     } else {
-      // month
-      const now = new Date();
-      const prefix = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+      // month — current Beijing calendar month
+      const prefix = utc8YearMonth();
       inRange = (date) => date.startsWith(prefix);
     }
     const rows = Object.entries(map).map(([model, days]) => {

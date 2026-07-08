@@ -1,5 +1,5 @@
 import type { DayUsage } from "@/lib/types";
-import { formatTokens } from "@/lib/utils";
+import { formatTokens, utc8Ymd, utc8Weekday } from "@/lib/utils";
 
 // Each level: (fill, opacity). Level 0 = no activity.
 const LEVELS: { fill: string; opacity: number }[] = [
@@ -13,27 +13,22 @@ const LEVELS: { fill: string; opacity: number }[] = [
 const WEEKS = 53; // full year, GitHub-style
 const ROWS = 7;
 
-function ymd(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-/** GitHub-style daily activity heatmap. Rendered as a width-filling SVG. */
+/** GitHub-style daily activity heatmap. Rendered as a width-filling SVG.
+ *  Date keys are Beijing (UTC+8) calendar dates to match the backend's
+ *  `byDay` keys — otherwise today's cell is blank at 00:00–08:00 Beijing. */
 export function Heatmap({ data }: { data: DayUsage[] }) {
   const map = new Map(data.map((d) => [d.date, d.tokens]));
 
-  const today = new Date();
   const totalDays = WEEKS * ROWS;
   const days: { date: string; tokens: number }[] = [];
   for (let i = totalDays - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setUTCDate(d.getUTCDate() - i);
-    const date = ymd(d);
+    // utc8Ymd offsets by pure ms — no DST, exact day arithmetic.
+    const date = utc8Ymd(Date.now() - i * 86400_000);
     days.push({ date, tokens: map.get(date) ?? 0 });
   }
 
   // pad the start so the first day lands on its weekday column
-  const first = new Date(days[0].date + "T00:00:00Z");
-  const lead = first.getUTCDay();
+  const lead = utc8Weekday(days[0].date);
   const cells: ({ date: string; tokens: number } | null)[] = [];
   for (let i = 0; i < lead; i++) cells.push(null);
   cells.push(...days);
